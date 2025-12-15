@@ -1,0 +1,394 @@
+-- 1.
+-- Raskite aktorių vardus, kurių pavardė prasideda raide „A“, ir pridėkite 
+-- simbolių skaičių prie kiekvieno jų vardo.-- 
+
+SELECT
+	first_name AS vardas,
+    last_name AS pavarde,
+    length(first_name) AS first_name_length
+FROM
+	actor
+WHERE
+	-- LEFT(last_name, 1) = 'A';
+    last_name LIKE 'A%';
+
+
+-- 2.
+-- Apskaičiuokite kiekvieno kliento nuomos mokesčio vidurkį.-- 
+
+-- Itano versija:-- 
+SELECT 
+	round(avg(amount), 2) AS avg_amount,
+	customer_id AS kliento_id
+FROM payment
+GROUP BY customer_id;
+
+-- Modesto variantas:-- 
+SELECT
+	CONCAT(c.first_name, ' ', last_name) AS `Kliento vardas, pavarde`
+    , ROUND(AVG(p.amount), 2) AS `Nuomos mokescio vidurkis`
+FROM customer c 
+JOIN payment p ON c.customer_id = p.customer_id
+GROUP BY `Kliento vardas, pavarde`, c.customer_id
+ORDER BY `Nuomos mokescio vidurkis` DESC;
+
+-- 3.
+-- Sugrupuokite nuomas pagal metus ir mėnesį bei parodykite jų skaičių.-- 
+
+SELECT
+	YEAR(rental_date) AS metai,
+    MONTH(rental_date) AS menuo,
+    COUNT(rental_id) AS nuomos_kiekis
+FROM
+	rental
+GROUP BY YEAR(rental_date), MONTH(rental_date);
+
+
+SELECT
+    YEAR(rental_date) AS metai,
+    MONTHNAME(rental_date) AS menuo,
+    COUNT(*) AS nuomu_kiekis
+FROM rental
+GROUP BY YEAR(rental_date), MONTHNAME(rental_date)
+ORDER BY metai ASC, MONTHNAME(rental_date) ASC;
+
+-- 4.
+-- Parodykite klientų vardus su jų bendrais mokėjimais, apvalinant iki 
+-- dviejų skaitmenų po kablelio.-- 
+
+SELECT
+	c.customer_id AS id,
+     c.first_name AS vardas,
+	 ROUND(SUM(p.amount), 2) AS suma
+FROM
+	customer AS c
+JOIN payment AS p
+	ON c.customer_id=p.customer_id
+GROUP BY id, vardas;
+
+
+-- 5.
+-- Rodyti kiekvieną filmą, id, pavadinimo pirmus 2 žodžius ir 
+-- ar jo trukmė ilgesnė nei vidutinė (IF)-- 
+
+
+SELECT
+    f.film_id,
+    SUBSTRING_INDEX(f.title, ' ', 2) AS title_du_zodziai,
+    IF(
+        f.length > (SELECT AVG(length) FROM film),
+        'Ilgesnis',
+        'Trumpesnis'
+    ) AS ilgesnis_nei_vidurkis
+FROM
+    film AS f;
+
+
+
+
+
+-- 6.
+-- Išveskite visas kategorijas ir skaičių filmų, priklausančių 
+-- kiekvienai kategorijai, bendrą pelną, vidutinį nuomos įkainį.-- 
+
+SELECT
+	c.name AS kategorija,
+    COUNT(f.film_id) AS filmai_kategorijoje,
+    SUM(p.amount) AS bendras_pelnas,
+  AVG(f.rental_rate) AS vidutinis_nuomos_ikainis
+FROM
+	film AS f
+JOIN film_category AS fc
+	ON f.film_id=fc.film_id
+JOIN category AS c
+	ON fc.category_id=c.category_id
+JOIN inventory AS i
+	ON f.film_id=i.film_id
+JOIN rental AS r
+	ON i.inventory_id=r.inventory_id
+JOIN payment AS p
+	ON r.rental_id=p.rental_id
+    GROUP BY c.name;
+
+SELECT
+    c.name AS kategorija,
+    COUNT(f.film_id) AS filmai_kategorijoje,
+    SUM(p.amount) AS bendras_pelnas,
+    AVG(f.rental_rate) AS vidutinis_nuomos_ikainis
+FROM film AS f
+JOIN film_category AS fc
+    ON f.film_id = fc.film_id
+JOIN category AS c
+    ON fc.category_id = c.category_id
+JOIN inventory AS i
+    ON f.film_id = i.film_id
+JOIN rental AS r
+    ON i.inventory_id = r.inventory_id
+JOIN payment AS p
+    ON r.rental_id = p.rental_id
+GROUP BY c.name;
+
+
+
+
+-- 7.
+-- Raskite visų nuomų, kurios įvyko darbo dienomis ir savaitgaliais, skaičių ir generuotas sumas
+
+-- DAYOFWEEK(): 1 = sekmadienis, 7 = šeštadienis-- 
+
+SELECT
+    CASE
+        WHEN DAYOFWEEK(r.rental_date) IN (1, 7) THEN 'Weekend'
+        ELSE 'Weekday'
+    END AS day_type,
+    COUNT(*) AS rentals_count,
+    SUM(p.amount) AS total_revenue
+FROM rental AS r
+JOIN payment AS p
+    ON r.rental_id = p.rental_id
+GROUP BY day_type;
+
+ 
+
+
+
+-- 8.
+-- Išveskite aktorius, kurių vardai yra ilgesni nei 6 simboliai.-- 
+
+SELECT 
+	actor_id,
+    first_name,
+    length(first_name)
+FROM
+	actor
+WHERE length(first_name) > 6
+GROUP BY
+actor_id, first_name;
+
+-- 9.
+-- Išveskite filmų pavadinimus kartu su jų kategorijomis, 
+-- sudarytą viename stulpelyje.-- 
+ 
+ SELECT
+	CONCAT(f.title, ' ', c.name) AS filmas_kategorija
+FROM 
+	film AS f
+JOIN film_category AS fc
+	ON f.film_id=fc.film_id
+JOIN category AS c
+	ON fc.category_id=c.category_id
+    ORDER BY f.title ASC;
+
+-- 10.
+-- Raskite aktoriaus pilną vardą ir kiek filmų jis (ji) suvaidino.-- 
+
+SELECT	
+	CONCAT(a.first_name, ' ', last_name) AS vardas_pavarde,
+    COUNT(f.film_id) AS filmu_skaicius
+FROM
+	film AS f
+JOIN film_actor AS fa
+	ON fa.film_id=f.film_id
+JOIN actor AS a	
+	ON fa.actor_id=a.actor_id
+GROUP BY a.actor_id, vardas_pavarde ;
+
+
+-- 11.
+-- Parodykite nuomų, kurios buvo grąžintos vėluojant 3 dienas ar daugiau, 
+-- skaičių. -- 
+
+	SELECT
+		rental_id,
+		CASE WHEN DATEDIFF(return_date, rental_date) > 3 THEN
+        'veluoja'
+       ELSE 'laiku' END AS nuomos_velavimas
+	FROM
+		rental;
+        
+   -- JEIGU TIK SKAIČIŲ-- 
+        
+SELECT 
+    COUNT(*) AS veluotos_nuomos
+FROM rental
+WHERE DATEDIFF(return_date, rental_date) >= 3;
+
+SELECT
+    CASE
+        WHEN DATEDIFF(return_date, rental_date) >= 3 THEN 'velavo'
+        ELSE 'laiku'
+    END AS statusas,
+    COUNT(*) AS kiekis
+FROM rental
+GROUP BY statusas;
+
+SELECT COUNT(*) AS veluojanciu_nuomu_sk
+FROM rental r
+JOIN inventory i ON r.inventory_id = i.inventory_id
+JOIN film f ON i.film_id = f.film_id
+WHERE DATEDIFF(r.return_date, r.rental_date) > f.rental_duration + 3;
+
+SELECT COUNT(*) AS Veluojanciu_filmu_kiekis
+FROM rental
+WHERE DATEDIFF(return_date, rental_date) >= 3;
+
+
+SELECT 
+    COUNT(*) AS veluotos_nuomos
+FROM rental r
+JOIN inventory i ON r.inventory_id = i.inventory_id
+JOIN film f ON i.film_id = f.film_id
+WHERE DATEDIFF(r.return_date, r.rental_date) - f.rental_duration >= 3;
+
+ 
+
+-- 12.
+-- Raskite visų filmų pavadinimų raidžių skaičių vidurkį.-- 
+
+SELECT
+	f.title AS pavadinimas,
+    length(f.title) AS pavadinimo_ilgis,
+    AVG(length(f.title)) AS vidutinis_pavadinimo_ilgis
+FROM
+	film AS f
+    GROUP BY f.title;
+    
+    
+    SELECT
+    f.title AS pavadinimas,
+    LENGTH(f.title) AS pavadinimo_ilgis,
+    (SELECT AVG(LENGTH(title)) FROM film) AS bendras_vidurkis
+FROM
+    film AS f;
+    
+    
+    SELECT
+    f.title AS pavadinimas,
+    LENGTH(f.title) AS pavadinimo_ilgis,
+    ROUND((SELECT AVG(LENGTH(title)) FROM film), 2) AS bendras_vidurkis
+FROM
+    film AS f;
+
+-- 13.
+-- Išveskite klientus, kurių vardai prasideda raide „M“, 
+-- ir parodykite jų mokėjimų sumą.-- 
+
+SELECT
+	cu.customer_id,
+	LEFT(cu.first_name, 1) AS pirma_raide_m,
+    SUM(p.amount) AS mokejimu_suma
+FROM customer AS cu
+JOIN payment AS p
+	ON cu.customer_id=p.customer_id
+	WHERE cu.first_name LIKE 'M%'
+    GROUP BY cu.customer_id;
+
+-- 14.
+-- Apskaičiuokite, kokią pajamų dalį sudaro nuomos, kurios truko 
+-- mažiau nei 5 dienas.-- 
+
+SELECT
+	DATEDIFF(r.return_date, r.rental_date),
+	SUM(p.amount) AS pajamos
+FROM
+	rental AS r
+JOIN 
+	payment AS p
+		ON r.rental_id=p.rental_id
+WHERE DATEDIFF(r.return_date, r.rental_date) < 5;
+
+-- TEISINGAI:-- 
+
+SELECT
+    SUM(p.amount) / (SELECT SUM(amount) FROM payment) AS pajamu_dalis
+FROM rental AS r
+JOIN payment AS p
+    ON r.rental_id = p.rental_id
+WHERE DATEDIFF(r.return_date, r.rental_date) < 5;
+
+
+SELECT
+    ROUND(
+        SUM(CASE 
+                WHEN DATEDIFF(r.return_date, r.rental_date) < 5 
+                THEN p.amount 
+                ELSE 0 
+            END
+        ) 
+        / SUM(p.amount) * 100,
+        2
+    ) AS procentai
+FROM rental AS r
+JOIN payment AS p
+    ON r.rental_id = p.rental_id;
+
+
+-- 15.
+-- Parodykite filmų trukmes, sugrupuotas pagal 
+-- intervalus (pvz., 0-60 min, 61-120 min ir t. t.).-- 
+
+SELECT
+	film_id,
+	length,
+
+-- 16.
+-- Klientai su paskutine nuomos data ir jos mėnesiu-- 
+
+SELECT 
+	c.customer_id AS id,
+    c.first_name AS vardas,
+    c.last_name AS pavarde,
+	MAX(r.rental_date) AS paskutine_nuoma,
+	EXTRACT(MONTH FROM MAX(r.rental_date)) AS nuomos_menesis
+FROM
+	rental AS r
+JOIN customer AS c
+	ON r.customer_id=c.customer_id
+GROUP BY	c.customer_id,
+    c.first_name,
+    c.last_name
+    ;
+
+
+-- 17.
+-- Kiek nuomų atliko kiekvienas klientas (vardas pavardė sujungti)-- 
+
+SELECT
+	COUNT(r.rental_id) AS nuomu_skaicius,
+    CONCAT(c.first_name, ' ', c.last_name) AS vardas_pavarde
+FROM
+	rental AS r
+		JOIN
+			customer AS c
+				ON r.customer_id=c.customer_id
+GROUP BY c.customer_id;
+
+
+-- 18.
+-- Rodyti kiekvienos nuomos trukmę dienomis-- 
+
+SELECT
+	rental_id AS id,
+	DATEDIFF(return_date, rental_date) AS nuomos_trukme
+FROM rental;
+
+
+-- 19.
+-- Priskirti klientui kategoriją pagal jų generuotas sumas (CASE)-- 
+SELECT
+	c.customer_id AS id,
+    CONCAT(c.first_name, ' ', c.last_name) AS vardas_pavarde,
+    SUM(p.amount) AS sumoketa,
+    CASE
+        WHEN SUM(p.amount) > 100 THEN 'VIP'
+        WHEN SUM(p.amount) BETWEEN 50 AND 99 THEN 'NORMALUS'
+        ELSE 'SMULKME'
+    END AS kliento_vertinimas
+FROM
+	customer AS c
+JOIN payment AS p
+	on c.customer_id=p.customer_id
+GROUP BY c.customer_id;
+
+
+
