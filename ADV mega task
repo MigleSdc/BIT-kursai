@@ -10,28 +10,49 @@ Sales_SalesOrderDetail, Sales_SalesTerritory ir Sales_SalesOrderHeader lenteles.
 /* ============================================================
 1) Susiek produktus su subkategorijomis, kategorijomis, teritorijomis
    ir pardavimo kanalais.
-
 Idėja: pirmiausia pasidarom „švarią bazę“ su teisingu grūdėtumu:
 Category x Territory x Channel x Year x Quarter.
-=========================================================== */
+============================================================ */
 SELECT
-pp.ProductID,
-pp.Name AS Produktas,
-ps.ProductSubcategoryID,
-ps.Name AS sub_kategorija,
-pc.ProductCategoryID,
-pc.Name AS kategorija,
-st.Name AS teritorija,
-ss.SalesOrderID,
-soh.Status,
-CASE 
-	WHEN soh.OnlineOrderFlag = 1 THEN 'Online'
-	ELSE 'Direct'
-    END AS sales_channel
+	pc.ProductCategoryID,
+	st.Name AS teritorija,
+	ss.SalesOrderID,
+	CASE 
+		WHEN soh.OnlineOrderFlag = 1 THEN 'Online'
+		ELSE 'Direct'
+		END AS sales_channel,
+	YEAR(soh.OrderDate) AS metai,
+	MONTH(soh.OrderDate) AS menuo,
+	QUARTER(soh.OrderDate) AS ketvirtis,
+    ROUND(SUM(ss.LineTotal), 2) AS Category_revenue
 FROM
 production_product pp
-JOIN production_productsubcategory ps ON ps.ProductSubcategoryID = pp.ProductSubcategoryID
-JOIN production_productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID
+LEFT JOIN production_productsubcategory ps ON ps.ProductSubcategoryID = pp.ProductSubcategoryID
+LEFT JOIN production_productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID
 JOIN sales_salesorderdetail ss ON pp.ProductID = ss.ProductID
 JOIN sales_salesorderheader soh ON ss.SalesOrderID = soh.SalesOrderID
-JOIN sales_salesterritory st ON st.TerritoryID = soh.TerritoryID;
+JOIN sales_salesterritory st ON st.TerritoryID = soh.TerritoryID
+GROUP BY
+	pc.ProductCategoryID,
+	st.Name,
+	ss.SalesOrderID;
+Modesto versija:
+SELECT
+ pc.ProductCategoryID
+    , pc.Name AS CategoryName
+    ,st.TerritoryID 
+    , st.Name AS TeritorryName
+    , CASE
+  WHEN soh.OnlineOrderFlag =  1 THEN 'Online'
+        ELSE 'Direct'
+        END AS Tipas
+ , YEAR(soh.OrderDate) AS Metai
+    , QUARTER(soh.OrderDate) AS Ketvirtis
+    , ROUND(SUM(sod.LineTotal), 2) AS CategoryRevenue
+FROM sales_salesorderdetail sod
+    JOIN production_product p ON sod.ProductID = p.ProductID
+    LEFT JOIN production_productsubcategory psc ON p.ProductSubcategoryID = psc.ProductSubcategoryID
+    LEFT JOIN production_productcategory pc ON psc.ProductCategoryID = pc.ProductCategoryID
+ JOIN sales_salesorderheader soh ON sod.SalesOrderID = soh.SalesOrderID
+ JOIN sales_SalesTerritory st ON  soh.TerritoryID = st.TerritoryID
+GROUP BY pc.ProductCategoryID, CategoryName, st.TerritoryID, TeritorryName, Tipas, Metai, Ketvirtis;
