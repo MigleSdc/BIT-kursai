@@ -3,17 +3,23 @@ UŽDUOTIS 3 Produktų kategorijų pelningumo analizė per laiką, teritorijose i
 kanaluose 
 Naudok Production_Product, Production_ProductSubcategory, Production_ProductCategory, 
 Sales_SalesOrderDetail, Sales_SalesTerritory ir Sales_SalesOrderHeader lenteles.
+ 
 - Šiose lentelėse NETURIME savikainos (COGS), todėl „pelningumas“
   šiame uždavinyje reiškia PAJAMAS (Revenue).
 - Pajamos imamos iš Sales_SalesOrderDetail.LineTotal (eilutės suma).
 ============================================================ */
+ 
+ 
 /* ============================================================
 1) Susiek produktus su subkategorijomis, kategorijomis, teritorijomis
    ir pardavimo kanalais.
+ 
 Idėja: pirmiausia pasidarom „švarią bazę“ su teisingu grūdėtumu:
 Category x Territory x Channel x Year x Quarter.
 ============================================================ */
+
 SELECT
+
 pp.ProductID,
 pp.Name AS Produktas,
 ps.ProductSubcategoryID,
@@ -23,9 +29,13 @@ pc.Name AS kategorija,
 st.Name AS teritorija,
 ss.SalesOrderID,
 soh.Status,
-soh.OnlineOrderFlag
+CASE 
+	WHEN soh.OnlineOrderFlag = 1 THEN 'Online'
+	ELSE 'Direct'
+    END AS sales_channel
 FROM
 production_product pp
+
 JOIN production_productsubcategory ps ON ps.ProductSubcategoryID = pp.ProductSubcategoryID
 JOIN production_productcategory pc ON ps.ProductCategoryID = pc.ProductCategoryID
 JOIN sales_salesorderdetail ss ON pp.ProductID = ss.ProductID
